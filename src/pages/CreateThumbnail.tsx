@@ -48,9 +48,12 @@ const CreateThumbnail = () => {
       return;
     }
 
-    if (step === 3 && !selectedStyle) {
-      toast.error('Please select a thumbnail style before proceeding');
-      return;
+    if (step === 3) {
+      // Only check for style selection if we're on the style selection step
+      // Allow to proceed even if no style is selected, this will be handled in the preview
+      if (!selectedStyle) {
+        toast.warning('No style selected. Your thumbnail will use default styling.');
+      }
     }
 
     if (step < steps.length) {
