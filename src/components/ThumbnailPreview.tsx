@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Check, Image, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 interface ThumbnailPreviewProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -175,17 +178,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
                         </div>
                       </div>
                     )}
-                    
-                    {thumbnailDetails && (
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">Details:</span> {thumbnailDetails}
-                      </div>
-                    )}
-                    {thumbnailText && (
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">Text:</span> "{thumbnailText}"
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-gray-500">No style selected</div>
@@ -194,6 +186,47 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             </Card>
           </div>
         </div>
+        
+        {/* Thumbnail Details Text Fields */}
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b">
+            <h4 className="font-medium">Thumbnail Text & Details</h4>
+          </div>
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="thumbnailDetailsReview" className="text-sm font-medium text-gray-700">
+                Thumbnail Details
+              </Label>
+              <Textarea
+                id="thumbnailDetailsReview"
+                value={thumbnailDetails}
+                onChange={(e) => setThumbnailDetails(e.target.value)}
+                rows={3}
+                placeholder="No details provided"
+                className="resize-none w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Details about the mood, elements and composition of your thumbnail
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="thumbnailTextReview" className="text-sm font-medium text-gray-700">
+                Text Overlay
+              </Label>
+              <Input
+                id="thumbnailTextReview"
+                value={thumbnailText}
+                onChange={(e) => setThumbnailText(e.target.value)}
+                placeholder="No text overlay"
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500">
+                Text that will appear on your thumbnail
+              </p>
+            </div>
+          </div>
+        </Card>
         
         {/* Video Information */}
         <Card className="overflow-hidden">
