@@ -16,11 +16,7 @@ const VideoInfoForm: React.FC<VideoInfoFormProps> = ({
     videoTitle, 
     setVideoTitle, 
     videoDescription, 
-    setVideoDescription,
-    thumbnailDetails,
-    setThumbnailDetails,
-    thumbnailText,
-    setThumbnailText
+    setVideoDescription
   } = useThumbnail();
 
   return (
@@ -45,39 +41,6 @@ const VideoInfoForm: React.FC<VideoInfoFormProps> = ({
         />
         <p className="text-xs text-gray-500 mt-1">
           This will be the main text displayed on your thumbnail
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="thumbnailDetails" className="text-base">
-          Thumbnail Details
-        </Label>
-        <Textarea
-          id="thumbnailDetails"
-          placeholder="Describe what you want in your thumbnail"
-          value={thumbnailDetails}
-          onChange={(e) => setThumbnailDetails(e.target.value)}
-          rows={3}
-          className="resize-none"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Describe the elements, mood, or composition you want for your thumbnail
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="thumbnailText" className="text-base">
-          TEXT on thumbnail
-        </Label>
-        <Input
-          id="thumbnailText"
-          placeholder="Leave blank if you don't want text on your thumbnail"
-          value={thumbnailText}
-          onChange={(e) => setThumbnailText(e.target.value)}
-          className="h-12"
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Optional text to overlay on your thumbnail
         </p>
       </div>
 
