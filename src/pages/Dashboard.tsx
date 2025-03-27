@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Section, PageTitle, PageSubtitle, Card } from '@/components/ui';
@@ -69,7 +70,7 @@ const Dashboard = () => {
     
     try {
       setGeneratingRandom(true);
-      toast.info('Generating a random thumbnail...');
+      toast.info('Generating a Mr. Beast style thumbnail...');
       
       // Use a placeholder image from Unsplash
       const facePlaceholder = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop';
@@ -77,11 +78,11 @@ const Dashboard = () => {
       const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
         body: {
           faceImage: facePlaceholder,
-          videoTitle: 'Random Test Thumbnail',
-          videoDescription: 'This is a test of the OpenAI integration',
-          thumbnailDetails: 'Create a professional and eye-catching thumbnail',
-          thumbnailText: 'AI GENERATED',
-          style: 'modern'
+          videoTitle: 'I Gave Away $10,000 To Random Subscribers',
+          videoDescription: 'Challenge video with huge prizes, audience reactions, and viral stunts',
+          thumbnailDetails: 'Create a thumbnail in the style of Mr. Beast videos with bright colors, shocked expressions, and large text overlays. Include money visuals, arrow pointing at something exciting, and high contrast design.',
+          thumbnailText: '$10,000 CHALLENGE',
+          style: 'vibrant'
         }
       });
       
@@ -93,10 +94,10 @@ const Dashboard = () => {
           .from('thumbnails')
           .insert({
             user_id: user?.id,
-            title: 'Random Test Thumbnail',
-            description: 'Generated with OpenAI',
+            title: 'Mr. Beast Style Thumbnail',
+            description: 'Big giveaway challenge in Mr. Beast style',
             thumbnail_url: data.thumbnailUrl,
-            style: 'modern',
+            style: 'vibrant',
             face_image_url: facePlaceholder
           });
           
@@ -104,11 +105,11 @@ const Dashboard = () => {
         
         // Refresh the thumbnails list
         queryClient.invalidateQueries({ queryKey: ['userThumbnails', user?.id] });
-        toast.success('Random thumbnail created!');
+        toast.success('Mr. Beast style thumbnail created!');
       }
     } catch (error: any) {
       console.error('Error generating random thumbnail:', error);
-      toast.error(`Failed to generate random thumbnail: ${error.message}`);
+      toast.error(`Failed to generate thumbnail: ${error.message}`);
     } finally {
       setGeneratingRandom(false);
     }
@@ -144,7 +145,7 @@ const Dashboard = () => {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4" />
-                      Random Thumbnail
+                      Mr. Beast Style
                     </>
                   )}
                 </Button>

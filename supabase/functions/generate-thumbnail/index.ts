@@ -25,6 +25,13 @@ serve(async (req) => {
     console.log('Generating thumbnail with style:', style);
     console.log('Video title:', videoTitle);
 
+    // Check if this is a Mr. Beast style thumbnail
+    const isMrBeastStyle = 
+      videoTitle?.includes('$') || 
+      thumbnailDetails?.includes('Mr. Beast') || 
+      thumbnailText?.includes('$') ||
+      (videoDescription && videoDescription.includes('challenge'));
+
     // Prepare the prompt for OpenAI
     const prompt = `
       Create a professional YouTube thumbnail with the following elements:
@@ -33,6 +40,18 @@ serve(async (req) => {
       ${thumbnailDetails ? `- Details: ${thumbnailDetails}` : ''}
       ${thumbnailText ? `- Text to display: ${thumbnailText}` : ''}
       ${style ? `- Style: ${style}` : ''}
+      
+      ${isMrBeastStyle ? `
+      This should specifically follow Mr. Beast's thumbnail style:
+      - Bold, eye-catching large text (usually in yellow, red, or white)
+      - Bright, high-contrast colors
+      - Shocked facial expressions or reactions
+      - Money visuals when relevant (cash, dollar signs)
+      - Clean, easily readable composition
+      - Often includes arrows pointing at important elements
+      - Numbers or dollar amounts should be very large and prominent
+      - Use vibrant backgrounds that make the subject pop
+      ` : ''}
       
       The thumbnail should be eye-catching, professional, and optimized for YouTube.
       Please describe in detail how this thumbnail should look based on the face in the image and the provided details.
