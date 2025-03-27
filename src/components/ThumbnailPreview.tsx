@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
 import { Card } from './ui';
 import { Button } from '@/components/ui/button';
 import { Check, Image, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ThumbnailPreviewProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -18,12 +20,34 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     faceImage, 
     selectedStyle,
     thumbnailDetails,
+    setThumbnailDetails,
     thumbnailText,
+    setThumbnailText,
     setGeneratedThumbnail,
     setStep
   } = useThumbnail();
   
   const [isGenerating, setIsGenerating] = useState(false);
+  const [styleImageUrl, setStyleImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch the style image URL when selectedStyle changes
+    if (selectedStyle) {
+      // Convert the style ID back to a filename
+      const styleFileName = `${selectedStyle}.jpg`; // Assuming jpg extension, adjust if needed
+      
+      // Get the public URL from the Supabase storage
+      const { data } = supabase.storage
+        .from('thumbnail_styles')
+        .getPublicUrl(styleFileName);
+        
+      if (data?.publicUrl) {
+        setStyleImageUrl(data.publicUrl);
+      }
+    } else {
+      setStyleImageUrl(null);
+    }
+  }, [selectedStyle]);
 
   const handleGenerateThumbnail = async () => {
     if (!faceImage || !videoTitle) {
@@ -99,8 +123,20 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
               </div>
               <div className="p-4">
                 {selectedStyle ? (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <div className="font-medium">{selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)}</div>
+                    
+                    {/* Display the style image */}
+                    {styleImageUrl && (
+                      <div className="rounded-lg overflow-hidden w-full aspect-video">
+                        <img 
+                          src={styleImageUrl} 
+                          alt={`${selectedStyle} style`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    
                     {thumbnailDetails && (
                       <div className="text-sm text-gray-600">
                         <span className="font-medium">Details:</span> {thumbnailDetails}
