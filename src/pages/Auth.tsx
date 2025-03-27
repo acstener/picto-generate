@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Lock, Mail, User } from 'lucide-react';
 import Header from '@/components/Header';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/context/AuthContext';
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -18,18 +19,14 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
+  const { session } = useAuth();
   
   useEffect(() => {
-    // Check if user is already signed in
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        navigate('/');
-      }
-    };
-    
-    checkUser();
-  }, [navigate]);
+    // If user is already signed in, redirect to home
+    if (session) {
+      navigate('/');
+    }
+  }, [session, navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,8 +46,10 @@ const Auth = () => {
       if (error) throw error;
       
       toast.success('Signed in successfully!');
-      navigate('/');
+      // No need to navigate here as the AuthContext will detect the session change
+      // and useEffect above will handle the redirect
     } catch (error: any) {
+      console.error('Sign in error:', error);
       toast.error(error.message || 'Error signing in');
     } finally {
       setLoading(false);
@@ -67,7 +66,7 @@ const Auth = () => {
     
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -79,9 +78,17 @@ const Auth = () => {
       
       if (error) throw error;
       
+      if (data.user?.identities?.length === 0) {
+        toast.error('This email is already registered. Please sign in instead.');
+        setIsSignUp(false);
+        return;
+      }
+      
       toast.success('Signed up successfully! Please check your email to confirm your account.');
+      // We can stay on the sign-in page after sign up since the user might need to verify their email
       setIsSignUp(false);
     } catch (error: any) {
+      console.error('Sign up error:', error);
       toast.error(error.message || 'Error signing up');
     } finally {
       setLoading(false);

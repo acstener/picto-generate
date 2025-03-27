@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   session: Session | null;
@@ -20,17 +21,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up the auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+      (event, currentSession) => {
+        console.log('Auth state change event:', event);
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         setLoading(false);
+        
+        // Show toast messages based on events
+        if (event === 'SIGNED_IN') {
+          toast.success('Successfully signed in!');
+        } else if (event === 'SIGNED_OUT') {
+          toast.info('You have been signed out');
+        } else if (event === 'USER_UPDATED') {
+          toast.info('Your profile has been updated');
+        }
       }
     );
 
     // Get the initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      console.log('Initial session check:', initialSession ? 'Found session' : 'No session');
+      setSession(initialSession);
+      setUser(initialSession?.user ?? null);
+      setLoading(false);
+    }).catch(error => {
+      console.error('Error getting initial session:', error);
       setLoading(false);
     });
 
@@ -41,7 +56,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error signing out:', error);
+      toast.error(error.message || 'Error signing out');
+    }
   };
 
   const value = {
