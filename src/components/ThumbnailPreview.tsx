@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
@@ -20,7 +21,9 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     faceImage, 
     selectedStyle,
     generatedThumbnail,
-    setGeneratedThumbnail
+    setGeneratedThumbnail,
+    thumbnailDetails,
+    thumbnailText
   } = useThumbnail();
   
   const { user } = useAuth();
@@ -187,6 +190,20 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             <span className="text-xs font-medium text-gray-500">Title</span>
             <p className="text-sm text-gray-900 mt-1">{videoTitle || 'Not provided'}</p>
           </div>
+          
+          {thumbnailDetails && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="text-xs font-medium text-gray-500">Thumbnail Details</span>
+              <p className="text-sm text-gray-900 mt-1">{thumbnailDetails}</p>
+            </div>
+          )}
+          
+          {thumbnailText && (
+            <div className="bg-gray-50 p-3 rounded-lg">
+              <span className="text-xs font-medium text-gray-500">Text on Thumbnail</span>
+              <p className="text-sm text-gray-900 mt-1">{thumbnailText}</p>
+            </div>
+          )}
           
           <div className="bg-gray-50 p-3 rounded-lg">
             <span className="text-xs font-medium text-gray-500">Style</span>

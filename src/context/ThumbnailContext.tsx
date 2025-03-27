@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 type ThumbnailStyle = 'modern' | 'minimal' | 'bold' | 'vibrant' | 'tech' | string;
@@ -11,6 +12,10 @@ interface ThumbnailContextType {
   setVideoTitle: (title: string) => void;
   videoDescription: string;
   setVideoDescription: (description: string) => void;
+  thumbnailDetails: string;
+  setThumbnailDetails: (details: string) => void;
+  thumbnailText: string;
+  setThumbnailText: (text: string) => void;
   selectedStyle: ThumbnailStyle | null;
   setSelectedStyle: (style: ThumbnailStyle | null) => void;
   generatedThumbnail: string | null;
@@ -25,6 +30,8 @@ export const ThumbnailProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [faceImage, setFaceImage] = useState<string | null>(null);
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
+  const [thumbnailDetails, setThumbnailDetails] = useState('');
+  const [thumbnailText, setThumbnailText] = useState('');
   const [selectedStyle, setSelectedStyle] = useState<ThumbnailStyle | null>(null);
   const [generatedThumbnail, setGeneratedThumbnail] = useState<string | null>(null);
 
@@ -33,6 +40,8 @@ export const ThumbnailProvider: React.FC<{ children: ReactNode }> = ({ children 
     setFaceImage(null);
     setVideoTitle('');
     setVideoDescription('');
+    setThumbnailDetails('');
+    setThumbnailText('');
     setSelectedStyle(null);
     setGeneratedThumbnail(null);
   };
@@ -48,6 +57,10 @@ export const ThumbnailProvider: React.FC<{ children: ReactNode }> = ({ children 
         setVideoTitle,
         videoDescription,
         setVideoDescription,
+        thumbnailDetails,
+        setThumbnailDetails,
+        thumbnailText,
+        setThumbnailText,
         selectedStyle,
         setSelectedStyle,
         generatedThumbnail,

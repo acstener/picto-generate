@@ -12,7 +12,16 @@ const VideoInfoForm: React.FC<VideoInfoFormProps> = ({
   className, 
   ...props 
 }) => {
-  const { videoTitle, setVideoTitle, videoDescription, setVideoDescription } = useThumbnail();
+  const { 
+    videoTitle, 
+    setVideoTitle, 
+    videoDescription, 
+    setVideoDescription,
+    thumbnailDetails,
+    setThumbnailDetails,
+    thumbnailText,
+    setThumbnailText
+  } = useThumbnail();
 
   return (
     <form 
@@ -40,6 +49,39 @@ const VideoInfoForm: React.FC<VideoInfoFormProps> = ({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="thumbnailDetails" className="text-base">
+          Thumbnail Details
+        </Label>
+        <Textarea
+          id="thumbnailDetails"
+          placeholder="Describe what you want in your thumbnail"
+          value={thumbnailDetails}
+          onChange={(e) => setThumbnailDetails(e.target.value)}
+          rows={3}
+          className="resize-none"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Describe the elements, mood, or composition you want for your thumbnail
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="thumbnailText" className="text-base">
+          TEXT on thumbnail
+        </Label>
+        <Input
+          id="thumbnailText"
+          placeholder="Leave blank if you don't want text on your thumbnail"
+          value={thumbnailText}
+          onChange={(e) => setThumbnailText(e.target.value)}
+          className="h-12"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Optional text to overlay on your thumbnail
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="description" className="text-base">
           Video Description or Keywords
         </Label>
@@ -48,7 +90,7 @@ const VideoInfoForm: React.FC<VideoInfoFormProps> = ({
           placeholder="Enter a brief description or key topics of your video"
           value={videoDescription}
           onChange={(e) => setVideoDescription(e.target.value)}
-          rows={4}
+          rows={3}
           className="resize-none"
         />
         <p className="text-xs text-gray-500 mt-1">
