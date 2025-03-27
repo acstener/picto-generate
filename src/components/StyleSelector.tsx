@@ -1,10 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, Upload, Plus, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from './ui/button';
 
 interface StyleSelectorProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -57,6 +60,9 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({
   const { selectedStyle, setSelectedStyle } = useThumbnail();
   const [thumbnailStyles, setThumbnailStyles] = useState<ThumbnailStyleOption[]>(defaultThumbnailStyles);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchCustomStyles = async () => {
@@ -110,7 +116,52 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({
     };
 
     fetchCustomStyles();
-  }, []);
+  }, [uploading]); // Refresh when new file is uploaded
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check if file is an image
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${file.name.split('.')[0]}-${uuidv4().substring(0, 8)}.${fileExt}`;
+      
+      // Upload the file to Supabase storage
+      const { error } = await supabase
+        .storage
+        .from('thumbnail_styles')
+        .upload(fileName, file);
+        
+      if (error) {
+        throw error;
+      }
+      
+      toast.success('Style template uploaded successfully');
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (error: any) {
+      console.error('Error uploading file:', error);
+      toast.error(`Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div 
@@ -120,6 +171,42 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({
       )}
       {...props}
     >
+      {user && (
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="text-lg font-medium">Add Custom Style</h3>
+              <p className="text-sm text-gray-500">Upload your own style template</p>
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept="image/*"
+            />
+            <Button 
+              onClick={handleUploadClick}
+              disabled={uploading}
+              className="gap-2"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4" />
+                  Upload Style
+                </>
+              )}
+            </Button>
+          </div>
+          <div className="h-px bg-gray-200 w-full my-6" />
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center items-center py-12">
           <Loader2 className="h-8 w-8 text-primary animate-spin" />
