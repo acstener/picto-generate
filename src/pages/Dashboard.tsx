@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Section, PageTitle, PageSubtitle, Card } from '@/components/ui';
 import { Button } from '@/components/ui/button';
-import { Image, Plus, ArrowRight, Video, User, Layout, Trash2 } from 'lucide-react';
+import { Image, Plus, ArrowRight, Video, User, Layout, Trash2, Sparkles } from 'lucide-react';
 import Header from '@/components/Header';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [generatingRandom, setGeneratingRandom] = React.useState(false);
 
   // Fetch user's thumbnails
   const { data: userThumbnails, isLoading } = useQuery({
@@ -64,6 +65,55 @@ const Dashboard = () => {
     }
   };
 
+  const handleGenerateRandom = async () => {
+    if (generatingRandom) return;
+    
+    try {
+      setGeneratingRandom(true);
+      toast.info('Generating a random thumbnail...');
+      
+      // Use a placeholder image from Unsplash
+      const facePlaceholder = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop';
+      
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          faceImage: facePlaceholder,
+          videoTitle: 'Random Test Thumbnail',
+          videoDescription: 'This is a test of the OpenAI integration',
+          thumbnailDetails: 'Create a professional and eye-catching thumbnail',
+          thumbnailText: 'AI GENERATED',
+          style: 'modern'
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.thumbnailUrl) {
+        // Save the generated thumbnail to the user's collection
+        const { error: saveError } = await supabase
+          .from('thumbnails')
+          .insert({
+            user_id: user?.id,
+            title: 'Random Test Thumbnail',
+            description: 'Generated with OpenAI',
+            thumbnail_url: data.thumbnailUrl,
+            style: 'modern'
+          });
+          
+        if (saveError) throw saveError;
+        
+        // Refresh the thumbnails list
+        queryClient.invalidateQueries({ queryKey: ['userThumbnails', user?.id] });
+        toast.success('Random thumbnail created!');
+      }
+    } catch (error: any) {
+      console.error('Error generating random thumbnail:', error);
+      toast.error(`Failed to generate random thumbnail: ${error.message}`);
+    } finally {
+      setGeneratingRandom(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <Header />
@@ -76,12 +126,37 @@ const Dashboard = () => {
               <PageSubtitle>Create and manage your YouTube thumbnails</PageSubtitle>
             </div>
             
-            <Link to="/create">
-              <Button className="mt-4 md:mt-0 gap-2">
-                <Plus className="h-4 w-4" />
-                New Thumbnail
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row mt-4 md:mt-0 gap-2">
+              {user && (
+                <Button 
+                  variant="outline" 
+                  className="gap-2"
+                  onClick={handleGenerateRandom}
+                  disabled={generatingRandom}
+                >
+                  {generatingRandom ? (
+                    <>
+                      <div className="animate-spin">
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Random Thumbnail
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              <Link to="/create">
+                <Button className="gap-2 w-full sm:w-auto">
+                  <Plus className="h-4 w-4" />
+                  New Thumbnail
+                </Button>
+              </Link>
+            </div>
           </div>
         </Section>
         

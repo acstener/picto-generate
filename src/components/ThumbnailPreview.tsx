@@ -1,15 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
 import { Card } from './ui';
 import { Button } from '@/components/ui/button';
-import { Check, Image, RefreshCcw } from 'lucide-react';
+import { Check, Image, RefreshCcw, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { useAuth } from '@/context/AuthContext';
 
 interface ThumbnailPreviewProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -30,27 +30,26 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     setStep
   } = useThumbnail();
   
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [styleImageUrl, setStyleImageUrl] = useState<string | null>(null);
+  const [aiDescription, setAiDescription] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch the style image URL when selectedStyle changes
     const fetchStyleImage = async () => {
       if (selectedStyle) {
         try {
-          // Try different extensions in case the file has a different extension
           const extensions = ['jpg', 'jpeg', 'png', 'webp'];
           
           for (const ext of extensions) {
             const styleFileName = `${selectedStyle}.${ext}`;
             
-            // List files to find the matching file regardless of extension
             const { data: listData } = await supabase.storage
               .from('thumbnail_styles')
               .list();
               
             if (listData) {
-              // Find the file that starts with the selected style ID
               const matchingFile = listData.find(file => 
                 file.name.startsWith(`${selectedStyle}.`) || 
                 file.name === styleFileName
@@ -64,7 +63,7 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
                 if (data?.publicUrl) {
                   setStyleImageUrl(data.publicUrl);
                   console.log('Found style image:', data.publicUrl);
-                  return; // Exit once we find a matching file
+                  return;
                 }
               }
             }
@@ -91,22 +90,53 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     }
 
     setIsGenerating(true);
+    setError(null);
     
     try {
-      // Simulate thumbnail generation (in a real app, this would call an API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          faceImage,
+          videoTitle,
+          videoDescription,
+          thumbnailDetails,
+          thumbnailText,
+          style: selectedStyle
+        }
+      });
       
-      // In a real implementation, this would be an API call to generate the thumbnail
-      // For now, we'll just use the face image as the generated thumbnail
-      setGeneratedThumbnail(faceImage);
+      if (error) throw error;
       
-      // Proceed to the download page
-      setStep(5);
-      
-      toast.success('Thumbnail generated successfully!');
-    } catch (error) {
+      if (data.thumbnailUrl) {
+        setGeneratedThumbnail(data.thumbnailUrl);
+        setAiDescription(data.description || '');
+        
+        if (user) {
+          const { error: saveError } = await supabase
+            .from('thumbnails')
+            .insert({
+              user_id: user.id,
+              title: videoTitle,
+              description: videoDescription || thumbnailDetails,
+              thumbnail_url: data.thumbnailUrl,
+              style: selectedStyle
+            });
+            
+          if (saveError) {
+            console.error('Error saving thumbnail:', saveError);
+            toast.warning('Thumbnail generated but not saved to your account');
+          }
+        }
+        
+        setStep(5);
+        
+        toast.success('Thumbnail generated successfully!');
+      } else {
+        throw new Error('No thumbnail URL returned from the API');
+      }
+    } catch (error: any) {
       console.error('Error generating thumbnail:', error);
-      toast.error('Failed to generate thumbnail');
+      setError(error.message || 'Failed to generate thumbnail');
+      toast.error(`Failed to generate thumbnail: ${error.message}`);
     } finally {
       setIsGenerating(false);
     }
@@ -126,7 +156,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           <p className="text-gray-500 mb-6">Please confirm all details below before generating your thumbnail.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Face Image Preview */}
             <Card className="overflow-hidden">
               <div className="p-4 border-b">
                 <h4 className="font-medium">Selected Face Image</h4>
@@ -151,7 +180,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
               </div>
             </Card>
             
-            {/* Thumbnail Style Preview */}
             <Card className="overflow-hidden">
               <div className="p-4 border-b">
                 <h4 className="font-medium">Selected Style</h4>
@@ -161,7 +189,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
                   <div className="space-y-4">
                     <div className="font-medium">{selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)}</div>
                     
-                    {/* Display the style image */}
                     {styleImageUrl ? (
                       <div className="rounded-lg overflow-hidden w-full aspect-video">
                         <img 
@@ -187,7 +214,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           </div>
         </div>
         
-        {/* Thumbnail Details Text Fields */}
         <Card className="overflow-hidden">
           <div className="p-4 border-b">
             <h4 className="font-medium">Thumbnail Text & Details</h4>
@@ -228,7 +254,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           </div>
         </Card>
         
-        {/* Video Information */}
         <Card className="overflow-hidden">
           <div className="p-4 border-b">
             <h4 className="font-medium">Video Information</h4>
@@ -248,8 +273,14 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
           </div>
         </Card>
         
-        {/* Generation Button */}
-        <div className="flex justify-center pt-4">
+        <div className="flex flex-col items-center pt-4 space-y-4">
+          {error && (
+            <div className="w-full p-4 bg-red-50 text-red-600 rounded-lg border border-red-200 mb-4">
+              <p className="font-medium">Error generating thumbnail:</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+          
           <Button 
             size="lg" 
             className="w-full sm:w-auto gap-2"
@@ -259,15 +290,20 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
             {isGenerating ? (
               <>
                 <RefreshCcw className="h-4 w-4 animate-spin" />
-                Generating...
+                Generating with AI...
               </>
             ) : (
               <>
-                <Check className="h-4 w-4" />
-                Generate Thumbnail
+                <Sparkles className="h-4 w-4" />
+                Generate AI Thumbnail
               </>
             )}
           </Button>
+          
+          <p className="text-xs text-gray-500 text-center max-w-md">
+            Click to generate a professional thumbnail using OpenAI technology.
+            This might take a few seconds.
+          </p>
         </div>
       </div>
     </div>
