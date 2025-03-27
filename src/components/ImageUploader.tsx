@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Upload, X, User, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface ImageUploaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -18,6 +18,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Fetch user's previous uploaded images
   const { data: userImages, isLoading: loadingImages } = useQuery({
@@ -89,13 +90,17 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = `${user.id}/${fileName}`;
 
+        console.log('Uploading to path:', filePath);
         const { error: uploadError, data } = await supabase.storage
           .from('face_images')
           .upload(filePath, file);
 
         if (uploadError) {
+          console.error('Upload error:', uploadError);
           throw uploadError;
         }
+
+        console.log('Upload successful, data:', data);
 
         const { data: { publicUrl } } = supabase.storage
           .from('face_images')
@@ -105,6 +110,24 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
         
         // Store the image URL in the user's faceImage state
         setFaceImage(publicUrl);
+        
+        // Save the image URL in the thumbnails table
+        const { error: dbError } = await supabase
+          .from('thumbnails')
+          .insert({
+            user_id: user.id,
+            face_image_url: publicUrl,
+            title: 'Temporary title', // Will be updated in the video info step
+            description: '' // Will be updated in the video info step
+          });
+          
+        if (dbError) {
+          console.error('Database error:', dbError);
+          throw dbError;
+        }
+        
+        // Invalidate the userImages query to refresh the list
+        queryClient.invalidateQueries({ queryKey: ['userImages', user.id] });
         
         toast.success('Image uploaded successfully');
       }
@@ -130,6 +153,13 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
   const handleSelectUserImage = (imageUrl: string) => {
     setFaceImage(imageUrl);
   };
+
+  // Log userImages when it changes
+  useEffect(() => {
+    if (userImages) {
+      console.log('User images:', userImages);
+    }
+  }, [userImages]);
 
   return (
     <div 
