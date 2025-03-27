@@ -1,19 +1,23 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface StyleSelectorProps extends React.HTMLAttributes<HTMLDivElement> {}
 
-interface ThumbnailStyleOption {
-  id: 'modern' | 'minimal' | 'bold' | 'vibrant' | 'tech';
+export interface ThumbnailStyleOption {
+  id: 'modern' | 'minimal' | 'bold' | 'vibrant' | 'tech' | string;
   name: string;
   description: string;
   imageSrc: string;
+  isCustom?: boolean;
 }
 
-const thumbnailStyles: ThumbnailStyleOption[] = [
+// Default built-in styles
+const defaultThumbnailStyles: ThumbnailStyleOption[] = [
   {
     id: 'modern',
     name: 'Modern',
@@ -51,6 +55,62 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({
   ...props 
 }) => {
   const { selectedStyle, setSelectedStyle } = useThumbnail();
+  const [thumbnailStyles, setThumbnailStyles] = useState<ThumbnailStyleOption[]>(defaultThumbnailStyles);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCustomStyles = async () => {
+      try {
+        setLoading(true);
+        
+        // Get all files from the thumbnail_styles bucket
+        const { data, error } = await supabase
+          .storage
+          .from('thumbnail_styles')
+          .list();
+
+        if (error) {
+          console.error('Error fetching custom styles:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // Filter for image files only
+          const imageFiles = data.filter(file => 
+            file.name.match(/\.(jpeg|jpg|png|gif|webp)$/i)
+          );
+          
+          // Create style options from the custom styles
+          const customStyles: ThumbnailStyleOption[] = imageFiles.map(file => {
+            // Use filename without extension as the style name
+            const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+            const formattedName = nameWithoutExt
+              .split(/[-_]/)
+              .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(' ');
+              
+            return {
+              id: `custom-${nameWithoutExt}`,
+              name: formattedName,
+              description: `Custom style: ${formattedName}`,
+              imageSrc: supabase.storage.from('thumbnail_styles').getPublicUrl(file.name).data.publicUrl,
+              isCustom: true
+            };
+          });
+          
+          // Combine default and custom styles
+          setThumbnailStyles([...defaultThumbnailStyles, ...customStyles]);
+        }
+      } catch (error) {
+        console.error('Error in fetchCustomStyles:', error);
+        toast.error('Failed to load custom styles');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomStyles();
+  }, []);
 
   return (
     <div 
@@ -60,39 +120,51 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({
       )}
       {...props}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {thumbnailStyles.map((style) => (
-          <div
-            key={style.id}
-            className={cn(
-              'relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 hover-scale',
-              selectedStyle === style.id 
-                ? 'border-primary ring-2 ring-primary/20' 
-                : 'border-transparent hover:border-gray-200'
-            )}
-            onClick={() => setSelectedStyle(style.id)}
-          >
-            <img 
-              src={style.imageSrc} 
-              alt={style.name}
-              className="w-full aspect-video object-cover"
-            />
-            
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-            
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h3 className="text-white font-medium text-lg">{style.name}</h3>
-              <p className="text-white/80 text-xs mt-1 line-clamp-2">{style.description}</p>
-            </div>
-            
-            {selectedStyle === style.id && (
-              <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1">
-                <Check className="h-4 w-4" />
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          <span className="ml-2 text-gray-500">Loading styles...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {thumbnailStyles.map((style) => (
+            <div
+              key={style.id}
+              className={cn(
+                'relative rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 hover-scale',
+                selectedStyle === style.id 
+                  ? 'border-primary ring-2 ring-primary/20' 
+                  : 'border-transparent hover:border-gray-200'
+              )}
+              onClick={() => setSelectedStyle(style.id)}
+            >
+              <img 
+                src={style.imageSrc} 
+                alt={style.name}
+                className="w-full aspect-video object-cover"
+              />
+              
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+              
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <h3 className="text-white font-medium text-lg">{style.name}</h3>
+                <p className="text-white/80 text-xs mt-1 line-clamp-2">{style.description}</p>
+                {style.isCustom && (
+                  <span className="inline-block mt-2 px-2 py-1 text-xs bg-primary/80 text-white rounded-full">
+                    Custom
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+              
+              {selectedStyle === style.id && (
+                <div className="absolute top-2 right-2 bg-primary text-white rounded-full p-1">
+                  <Check className="h-4 w-4" />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

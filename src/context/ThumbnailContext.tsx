@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-type ThumbnailStyle = 'modern' | 'minimal' | 'bold' | 'vibrant' | 'tech';
+type ThumbnailStyle = 'modern' | 'minimal' | 'bold' | 'vibrant' | 'tech' | string;
 
 interface ThumbnailContextType {
   step: number;
