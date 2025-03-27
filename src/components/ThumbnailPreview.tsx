@@ -1,11 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card } from './ui';
 import { Button } from '@/components/ui/button';
 import { Download, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ThumbnailPreviewProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -22,19 +23,81 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     setGeneratedThumbnail
   } = useThumbnail();
   
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [thumbnailId, setThumbnailId] = useState<string | null>(null);
 
-  const generateThumbnail = () => {
+  const generateThumbnail = async () => {
+    if (!faceImage || !videoTitle || !selectedStyle) {
+      toast.error('Missing required information. Please complete all steps.');
+      return;
+    }
+
     setIsGenerating(true);
     
-    // Simulate thumbnail generation
-    setTimeout(() => {
+    try {
+      // Simulate thumbnail generation (in a real app, this would call an API)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // In a real implementation, this would be an API call to generate the thumbnail
       // For now, we'll just use the face image as the generated thumbnail
       setGeneratedThumbnail(faceImage);
-      setIsGenerating(false);
+      
+      // Save the thumbnail data to the database if user is authenticated
+      if (user) {
+        await saveThumbnailToDatabase();
+      }
+      
       toast.success('Thumbnail generated successfully!');
-    }, 2000);
+    } catch (error) {
+      console.error('Error generating thumbnail:', error);
+      toast.error('Failed to generate thumbnail');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const saveThumbnailToDatabase = async () => {
+    if (!user || !faceImage || !videoTitle) return;
+
+    try {
+      // If we have an existing thumbnailId, update it
+      if (thumbnailId) {
+        const { error } = await supabase
+          .from('thumbnails')
+          .update({
+            face_image_url: faceImage,
+            title: videoTitle,
+            description: videoDescription,
+            style: selectedStyle,
+            thumbnail_url: generatedThumbnail || faceImage,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', thumbnailId);
+
+        if (error) throw error;
+      } else {
+        // Otherwise create a new record
+        const { data, error } = await supabase
+          .from('thumbnails')
+          .insert({
+            user_id: user.id,
+            face_image_url: faceImage,
+            title: videoTitle,
+            description: videoDescription,
+            style: selectedStyle,
+            thumbnail_url: generatedThumbnail || faceImage
+          })
+          .select('id')
+          .single();
+
+        if (error) throw error;
+        if (data) setThumbnailId(data.id);
+      }
+    } catch (error: any) {
+      console.error('Error saving thumbnail to database:', error);
+      toast.error(`Error saving thumbnail: ${error.message}`);
+    }
   };
 
   const handleDownload = () => {

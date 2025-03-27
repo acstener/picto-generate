@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Check, Download, Home, RefreshCcw } from 'lucide-react';
 import Header from '@/components/Header';
 import { useThumbnail } from '@/context/ThumbnailContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 const Success = () => {
   const navigate = useNavigate();
-  const { generatedThumbnail, resetState } = useThumbnail();
+  const { generatedThumbnail, videoTitle, resetState } = useThumbnail();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (!generatedThumbnail) {
@@ -56,6 +58,7 @@ const Success = () => {
               <h1 className="text-3xl font-bold text-gray-900">Thumbnail Created!</h1>
               <p className="text-gray-500 mt-2">
                 Your YouTube thumbnail has been successfully generated
+                {user && " and saved to your account"}
               </p>
             </div>
             
@@ -63,7 +66,7 @@ const Success = () => {
               <div className="p-6 sm:p-8">
                 <h2 className="text-xl font-semibold text-gray-900">Your Thumbnail</h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  Here's your generated thumbnail ready to be downloaded
+                  {videoTitle ? `"${videoTitle}"` : "Here's your generated thumbnail ready to be downloaded"}
                 </p>
               </div>
               
@@ -110,6 +113,11 @@ const Success = () => {
               <p className="text-sm text-gray-500">
                 Thank you for using ThumbnailAI. We hope you love your new thumbnail!
               </p>
+              {user && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Your thumbnail has been saved to your account and will be available the next time you log in.
+                </p>
+              )}
             </div>
           </div>
         </Section>

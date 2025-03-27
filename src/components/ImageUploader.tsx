@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Upload, X, User, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { useQuery } from '@tanstack/react-query';
 
 interface ImageUploaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -16,6 +18,28 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+
+  // Fetch user's previous uploaded images
+  const { data: userImages, isLoading: loadingImages } = useQuery({
+    queryKey: ['userImages', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('thumbnails')
+        .select('id, face_image_url')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching user images:', error);
+        return [];
+      }
+      
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,6 +75,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
     setUploading(true);
 
     try {
+      // First get dataURL for preview
       const reader = new FileReader();
       reader.onload = (event) => {
         if (event.target?.result) {
@@ -78,6 +103,9 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
 
         console.log('Image uploaded to:', publicUrl);
         
+        // Store the image URL in the user's faceImage state
+        setFaceImage(publicUrl);
+        
         toast.success('Image uploaded successfully');
       }
     } catch (error: any) {
@@ -97,6 +125,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleSelectUserImage = (imageUrl: string) => {
+    setFaceImage(imageUrl);
   };
 
   return (
@@ -164,6 +196,29 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
           >
             <X className="h-4 w-4" />
           </Button>
+        </div>
+      )}
+
+      {/* Display user's previously uploaded images if any */}
+      {user && userImages && userImages.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-medium text-gray-900">Your Images</h3>
+          <p className="text-sm text-gray-500 mt-1">Your previously uploaded images</p>
+          <div className="grid grid-cols-3 gap-4 mt-4">
+            {userImages.map((img, idx) => (
+              <div 
+                key={img.id}
+                className="aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => handleSelectUserImage(img.face_image_url)}
+              >
+                <img 
+                  src={img.face_image_url} 
+                  alt={`Your image ${idx + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
