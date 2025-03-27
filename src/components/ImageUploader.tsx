@@ -1,17 +1,21 @@
-
 import React, { useState, useRef } from 'react';
 import { Upload, X, User, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ImageUploaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) => {
   const { faceImage, setFaceImage } = useThumbnail();
   const [isDragging, setIsDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,19 +42,50 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
     }
   };
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setFaceImage(event.target.result as string);
+    setUploading(true);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFaceImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+
+      if (user) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('face_images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('face_images')
+          .getPublicUrl(filePath);
+
+        console.log('Image uploaded to:', publicUrl);
+        
+        toast.success('Image uploaded successfully');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast.error(`Error uploading image: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleUploadClick = () => {
@@ -103,9 +138,10 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
               type="button"
               className="mt-2 gap-2"
               size="sm"
+              disabled={uploading}
             >
               <Upload className="h-4 w-4" />
-              Select image
+              {uploading ? 'Uploading...' : 'Select image'}
             </Button>
           </div>
         </div>
@@ -124,6 +160,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ className, ...props }) =>
             size="sm"
             className="absolute top-2 right-2"
             onClick={handleRemoveImage}
+            disabled={uploading}
           >
             <X className="h-4 w-4" />
           </Button>
