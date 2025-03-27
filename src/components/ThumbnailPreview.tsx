@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
@@ -118,7 +119,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
               title: videoTitle,
               description: videoDescription || thumbnailDetails,
               thumbnail_url: data.thumbnailUrl,
-              style: selectedStyle
+              style: selectedStyle,
+              face_image_url: faceImage // Add the required face_image_url field
             });
             
           if (saveError) {

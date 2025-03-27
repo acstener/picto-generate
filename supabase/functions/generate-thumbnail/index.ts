@@ -35,6 +35,7 @@ serve(async (req) => {
       ${style ? `- Style: ${style}` : ''}
       
       The thumbnail should be eye-catching, professional, and optimized for YouTube.
+      Please describe in detail how this thumbnail should look based on the face in the image and the provided details.
     `;
 
     // Call OpenAI API with the face image and prompt

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Section, PageTitle, PageSubtitle, Card } from '@/components/ui';
@@ -97,7 +96,8 @@ const Dashboard = () => {
             title: 'Random Test Thumbnail',
             description: 'Generated with OpenAI',
             thumbnail_url: data.thumbnailUrl,
-            style: 'modern'
+            style: 'modern',
+            face_image_url: facePlaceholder
           });
           
         if (saveError) throw saveError;
