@@ -17,7 +17,8 @@ const steps = [
   'Upload Face',
   'Video Info',
   'Select Style',
-  'Generate'
+  'Review',
+  'Complete'
 ];
 
 const CreateThumbnail = () => {
@@ -29,8 +30,7 @@ const CreateThumbnail = () => {
     videoTitle,
     videoDescription,
     selectedStyle,
-    generatedThumbnail,
-    setGeneratedThumbnail
+    generatedThumbnail
   } = useThumbnail();
 
   useEffect(() => {
@@ -82,6 +82,12 @@ const CreateThumbnail = () => {
         return <StyleSelector />;
       case 4:
         return <ThumbnailPreview />;
+      case 5:
+        if (generatedThumbnail) {
+          navigate('/success');
+          return null;
+        }
+        return <ThumbnailPreview />;
       default:
         return null;
     }
@@ -111,13 +117,15 @@ const CreateThumbnail = () => {
                 {step === 1 && 'Upload Your Face'}
                 {step === 2 && 'Enter Video Information'}
                 {step === 3 && 'Select Thumbnail Style'}
-                {step === 4 && 'Generate Thumbnail'}
+                {step === 4 && 'Review and Confirm'}
+                {step === 5 && 'Generating Thumbnail'}
               </h2>
               <p className="text-gray-500 mt-1">
                 {step === 1 && 'Upload a photo of your face or select one of our example images'}
                 {step === 2 && 'Provide details about your video to create a relevant thumbnail'}
                 {step === 3 && 'Choose a style that matches your content and brand'}
-                {step === 4 && 'Review and finalize your thumbnail'}
+                {step === 4 && 'Review your selections and generate your thumbnail'}
+                {step === 5 && 'Your thumbnail is being generated'}
               </p>
             </div>
             
@@ -125,26 +133,30 @@ const CreateThumbnail = () => {
               {renderStepContent()}
             </div>
             
-            <div className="mt-8 flex justify-between">
-              <Button
-                variant="outline"
-                onClick={handleBack}
-                disabled={step === 1}
-              >
-                Back
-              </Button>
-              
-              {step < steps.length ? (
-                <Button onClick={handleNext}>
-                  Continue <ArrowRight className="ml-2 h-4 w-4" />
+            {step !== 5 && step < 5 && (
+              <div className="mt-8 flex justify-between">
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  disabled={step === 1}
+                >
+                  Back
                 </Button>
-              ) : (
-                <Button onClick={handleFinish} className="gap-2">
-                  <Check className="h-4 w-4" />
-                  Finish
-                </Button>
-              )}
-            </div>
+                
+                {step < 4 ? (
+                  <Button onClick={handleNext}>
+                    Continue <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                ) : step === 4 ? (
+                  null // ThumbnailPreview now has its own Generate button
+                ) : (
+                  <Button onClick={handleFinish} className="gap-2">
+                    <Check className="h-4 w-4" />
+                    Finish
+                  </Button>
+                )}
+              </div>
+            )}
           </Card>
         </Section>
       </Container>

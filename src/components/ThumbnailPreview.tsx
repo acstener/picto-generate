@@ -1,13 +1,10 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useThumbnail } from '@/context/ThumbnailContext';
-import { useAuth } from '@/context/AuthContext';
 import { Card } from './ui';
 import { Button } from '@/components/ui/button';
-import { Download, RefreshCcw } from 'lucide-react';
+import { Check, Image, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ThumbnailPreviewProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -20,18 +17,16 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     videoDescription, 
     faceImage, 
     selectedStyle,
-    generatedThumbnail,
-    setGeneratedThumbnail,
     thumbnailDetails,
-    thumbnailText
+    thumbnailText,
+    setGeneratedThumbnail,
+    setStep
   } = useThumbnail();
   
-  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [thumbnailId, setThumbnailId] = useState<string | null>(null);
 
-  const generateThumbnail = async () => {
-    if (!faceImage || !videoTitle || !selectedStyle) {
+  const handleGenerateThumbnail = async () => {
+    if (!faceImage || !videoTitle) {
       toast.error('Missing required information. Please complete all steps.');
       return;
     }
@@ -46,10 +41,8 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
       // For now, we'll just use the face image as the generated thumbnail
       setGeneratedThumbnail(faceImage);
       
-      // Save the thumbnail data to the database if user is authenticated
-      if (user) {
-        await saveThumbnailToDatabase();
-      }
+      // Proceed to the download page
+      setStep(5);
       
       toast.success('Thumbnail generated successfully!');
     } catch (error) {
@@ -60,68 +53,6 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
     }
   };
 
-  const saveThumbnailToDatabase = async () => {
-    if (!user || !faceImage || !videoTitle) return;
-
-    try {
-      // If we have an existing thumbnailId, update it
-      if (thumbnailId) {
-        const { error } = await supabase
-          .from('thumbnails')
-          .update({
-            face_image_url: faceImage,
-            title: videoTitle,
-            description: videoDescription,
-            style: selectedStyle,
-            thumbnail_url: generatedThumbnail || faceImage,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', thumbnailId);
-
-        if (error) throw error;
-      } else {
-        // Otherwise create a new record
-        const { data, error } = await supabase
-          .from('thumbnails')
-          .insert({
-            user_id: user.id,
-            face_image_url: faceImage,
-            title: videoTitle,
-            description: videoDescription,
-            style: selectedStyle,
-            thumbnail_url: generatedThumbnail || faceImage
-          })
-          .select('id')
-          .single();
-
-        if (error) throw error;
-        if (data) setThumbnailId(data.id);
-      }
-    } catch (error: any) {
-      console.error('Error saving thumbnail to database:', error);
-      toast.error(`Error saving thumbnail: ${error.message}`);
-    }
-  };
-
-  const handleDownload = () => {
-    // In a real implementation, this would download the actual generated thumbnail
-    if (generatedThumbnail) {
-      const link = document.createElement('a');
-      link.href = generatedThumbnail;
-      link.download = `thumbnail-${Date.now()}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast.success('Thumbnail downloaded!');
-    }
-  };
-
-  useEffect(() => {
-    if (faceImage && videoTitle && selectedStyle) {
-      generateThumbnail();
-    }
-  }, []); // Empty dependency array to run only once when component mounts
-
   return (
     <div 
       className={cn(
@@ -130,92 +61,105 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
       )}
       {...props}
     >
-      <Card className="overflow-hidden">
-        <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900">Your Thumbnail Preview</h3>
-          <p className="text-sm text-gray-500 mt-1">Here's a preview of your generated thumbnail</p>
-        </div>
-        
-        <div className="px-6 pb-6">
-          {generatedThumbnail ? (
-            <div className="rounded-lg overflow-hidden thumbnail-aspect-ratio w-full animate-scale-in">
-              <img 
-                src={generatedThumbnail} 
-                alt="Generated thumbnail"
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ) : (
-            <div className="rounded-lg bg-gray-100 thumbnail-aspect-ratio w-full flex items-center justify-center">
-              {isGenerating ? (
-                <div className="flex flex-col items-center">
-                  <div className="animate-pulse-soft">
-                    <RefreshCcw className="h-8 w-8 text-gray-400 animate-spin" />
+      <div className="space-y-8">
+        <div>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Review Your Thumbnail Details</h3>
+          <p className="text-gray-500 mb-6">Please confirm all details below before generating your thumbnail.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Face Image Preview */}
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b">
+                <h4 className="font-medium">Selected Face Image</h4>
+              </div>
+              <div className="p-4">
+                {faceImage ? (
+                  <div className="rounded-lg overflow-hidden aspect-square w-full">
+                    <img 
+                      src={faceImage} 
+                      alt="Your face"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <p className="text-gray-500 mt-4">Generating your thumbnail...</p>
-                </div>
-              ) : (
-                <p className="text-gray-500">Complete all steps to generate a thumbnail</p>
-              )}
-            </div>
-          )}
+                ) : (
+                  <div className="rounded-lg bg-gray-100 aspect-square w-full flex items-center justify-center">
+                    <div className="flex flex-col items-center text-gray-500">
+                      <Image className="h-8 w-8 mb-2" />
+                      <p>No face image selected</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+            
+            {/* Thumbnail Style Preview */}
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b">
+                <h4 className="font-medium">Selected Style</h4>
+              </div>
+              <div className="p-4">
+                {selectedStyle ? (
+                  <div className="space-y-2">
+                    <div className="font-medium">{selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)}</div>
+                    {thumbnailDetails && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Details:</span> {thumbnailDetails}
+                      </div>
+                    )}
+                    {thumbnailText && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Text:</span> "{thumbnailText}"
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-gray-500">No style selected</div>
+                )}
+              </div>
+            </Card>
+          </div>
         </div>
         
-        <div className="px-6 pb-6 flex space-x-3">
+        {/* Video Information */}
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b">
+            <h4 className="font-medium">Video Information</h4>
+          </div>
+          <div className="p-4 space-y-3">
+            <div>
+              <span className="text-sm font-medium text-gray-500">Title</span>
+              <p className="text-gray-900">{videoTitle || 'Not provided'}</p>
+            </div>
+            
+            {videoDescription && (
+              <div>
+                <span className="text-sm font-medium text-gray-500">Description/Keywords</span>
+                <p className="text-gray-900">{videoDescription}</p>
+              </div>
+            )}
+          </div>
+        </Card>
+        
+        {/* Generation Button */}
+        <div className="flex justify-center pt-4">
           <Button 
-            className="w-full gap-2"
-            disabled={!generatedThumbnail || isGenerating}
-            onClick={handleDownload}
-          >
-            <Download className="h-4 w-4" />
-            Download
-          </Button>
-          
-          <Button 
-            variant="outline"
-            className="gap-2"
+            size="lg" 
+            className="w-full sm:w-auto gap-2"
+            onClick={handleGenerateThumbnail}
             disabled={isGenerating}
-            onClick={generateThumbnail}
           >
-            <RefreshCcw className="h-4 w-4" />
-            Regenerate
+            {isGenerating ? (
+              <>
+                <RefreshCcw className="h-4 w-4 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" />
+                Generate Thumbnail
+              </>
+            )}
           </Button>
-        </div>
-      </Card>
-      
-      <div className="mt-6">
-        <h3 className="text-lg font-medium text-gray-900">Thumbnail Details</h3>
-        <div className="mt-2 space-y-2">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="text-xs font-medium text-gray-500">Title</span>
-            <p className="text-sm text-gray-900 mt-1">{videoTitle || 'Not provided'}</p>
-          </div>
-          
-          {thumbnailDetails && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <span className="text-xs font-medium text-gray-500">Thumbnail Details</span>
-              <p className="text-sm text-gray-900 mt-1">{thumbnailDetails}</p>
-            </div>
-          )}
-          
-          {thumbnailText && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <span className="text-xs font-medium text-gray-500">Text on Thumbnail</span>
-              <p className="text-sm text-gray-900 mt-1">{thumbnailText}</p>
-            </div>
-          )}
-          
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <span className="text-xs font-medium text-gray-500">Style</span>
-            <p className="text-sm text-gray-900 mt-1">{selectedStyle ? selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1) : 'Not selected'}</p>
-          </div>
-          
-          {videoDescription && (
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <span className="text-xs font-medium text-gray-500">Description/Keywords</span>
-              <p className="text-sm text-gray-900 mt-1">{videoDescription}</p>
-            </div>
-          )}
         </div>
       </div>
     </div>
