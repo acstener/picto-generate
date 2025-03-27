@@ -32,21 +32,53 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
 
   useEffect(() => {
     // Fetch the style image URL when selectedStyle changes
-    if (selectedStyle) {
-      // Convert the style ID back to a filename
-      const styleFileName = `${selectedStyle}.jpg`; // Assuming jpg extension, adjust if needed
-      
-      // Get the public URL from the Supabase storage
-      const { data } = supabase.storage
-        .from('thumbnail_styles')
-        .getPublicUrl(styleFileName);
-        
-      if (data?.publicUrl) {
-        setStyleImageUrl(data.publicUrl);
+    const fetchStyleImage = async () => {
+      if (selectedStyle) {
+        try {
+          // Try different extensions in case the file has a different extension
+          const extensions = ['jpg', 'jpeg', 'png', 'webp'];
+          
+          for (const ext of extensions) {
+            const styleFileName = `${selectedStyle}.${ext}`;
+            
+            // List files to find the matching file regardless of extension
+            const { data: listData } = await supabase.storage
+              .from('thumbnail_styles')
+              .list();
+              
+            if (listData) {
+              // Find the file that starts with the selected style ID
+              const matchingFile = listData.find(file => 
+                file.name.startsWith(`${selectedStyle}.`) || 
+                file.name === styleFileName
+              );
+              
+              if (matchingFile) {
+                const { data } = supabase.storage
+                  .from('thumbnail_styles')
+                  .getPublicUrl(matchingFile.name);
+                  
+                if (data?.publicUrl) {
+                  setStyleImageUrl(data.publicUrl);
+                  console.log('Found style image:', data.publicUrl);
+                  return; // Exit once we find a matching file
+                }
+              }
+            }
+          }
+          
+          console.log('No matching style image found for:', selectedStyle);
+          setStyleImageUrl(null);
+        } catch (error) {
+          console.error('Error fetching style image:', error);
+          setStyleImageUrl(null);
+        }
+      } else {
+        setStyleImageUrl(null);
       }
-    } else {
-      setStyleImageUrl(null);
-    }
+    };
+    
+    fetchStyleImage();
   }, [selectedStyle]);
 
   const handleGenerateThumbnail = async () => {
@@ -127,13 +159,20 @@ const ThumbnailPreview: React.FC<ThumbnailPreviewProps> = ({
                     <div className="font-medium">{selectedStyle.charAt(0).toUpperCase() + selectedStyle.slice(1)}</div>
                     
                     {/* Display the style image */}
-                    {styleImageUrl && (
+                    {styleImageUrl ? (
                       <div className="rounded-lg overflow-hidden w-full aspect-video">
                         <img 
                           src={styleImageUrl} 
                           alt={`${selectedStyle} style`}
                           className="w-full h-full object-cover"
                         />
+                      </div>
+                    ) : (
+                      <div className="rounded-lg bg-gray-100 aspect-video w-full flex items-center justify-center">
+                        <div className="flex flex-col items-center text-gray-500">
+                          <Image className="h-8 w-8 mb-2" />
+                          <p>Style image not available</p>
+                        </div>
                       </div>
                     )}
                     
