@@ -95,7 +95,7 @@ serve(async (req) => {
     const thumbnailDescription = descriptionData.choices[0].message.content;
     console.log('Generated thumbnail description:', thumbnailDescription);
     
-    // Now generate the actual image
+    // Now generate the actual image - FIXED: Changed 'standard' quality to 'high'
     const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
@@ -107,7 +107,7 @@ serve(async (req) => {
         prompt: prompt,
         n: 1,
         size: "1024x1024",
-        quality: "standard",
+        quality: "high", // Changed from "standard" to "high"
       }),
     });
 
